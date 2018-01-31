@@ -27,17 +27,11 @@ public struct Money {
     public var amount : Int
     public var currency : String
     
-    /*
-     0: USD
-     1: GBP
-     2: CAN
-     3: EUR
-     */
     private let conversions : [String: [String: Double]] = ["USD": ["USD": 1.0, "GBP": 0.5, "CAN": 1.25, "EUR": 1.5],
                                                             "GBP": ["USD": 2.0, "GBP": 1.0, "CAN": 1.74, "EUR": 1.14],
-                                                            "EUR": ["USD":1.24, "GBP": 0.88, "CAN": 1.53, "EUR": 1.0],
+                                                            "EUR": ["USD": 2/3, "GBP": 0.88, "CAN": 1.53, "EUR": 1.0],
                                                             "CAN": ["USD":0.81, "GBP": 0.58, "CAN": 1.0, "EUR": 0.65]
-    ]
+                                                        ]
     
     init(amount: Int, currency: String) {
         self.amount = amount
@@ -50,7 +44,6 @@ public struct Money {
         assert(currencies.contains(to))
     }
     
-    // TODO: Check if we can change the method header
     public func convert(_ to: String) -> Money {
         verifyCurrency(to)
         let factor : Double = conversions[self.currency]![to]!
@@ -60,8 +53,8 @@ public struct Money {
     
     public func add(_ to: Money) -> Money {
         verifyCurrency(to.currency)
-        let temp: Money = to.convert(self.currency)
-        return Money(amount: self.amount + temp.amount, currency: self.currency)
+        let temp : Money = convert(to.currency)
+        return Money(amount: to.amount + temp.amount, currency: to.currency)
     }
     
     public func subtract(_ from: Money) -> Money {
@@ -90,68 +83,96 @@ open class Job {
     
     open func calculateIncome(_ hours: Int) -> Int {
         switch self.type {
-            case .Hourly(let rate) :
-                return Int(Double(hours) * rate)
-            case .Salary(let amount) :
-                return Int(amount)
+        case .Hourly(let rate) :
+            return Int(Double(hours) * rate)
+        case .Salary(let amount) :
+            return Int(amount)
         }
     }
     
     open func raise(_ amt : Double) {
         switch self.type {
         case .Hourly(let rate) :
-            return Int((Double(hours) * rate) + (amt * (Double(hours) * rate)))
-        case .Salary(let amount) :
-             return Int(amount) + (Int(amount) * amt)
+            self.type = JobType.Hourly(amt + rate)
+        case .Salary(let salary) :
+            self.type = JobType.Salary(salary + Int(amt))
         }
     }
 }
-    ////////////////////////////////////
-    // Person
-    //
-    open class Person {
-        open var firstName : String = ""
-        open var lastName : String = ""
-        open var age : Int = 0
-        
-        fileprivate var _job : Job? = nil
-        open var job : Job? {
-            get { }
-            set(value) {
+////////////////////////////////////
+// Person
+//
+open class Person {
+    open var firstName : String = ""
+    open var lastName : String = ""
+    open var age : Int = 0
+    
+    fileprivate var _job : Job? = nil
+    open var job : Job? {
+        get {
+            return self._job
+        }
+        set(value) {
+            if self.age > 16 {
+                self._job = value
             }
-        }
-        
-        fileprivate var _spouse : Person? = nil
-        open var spouse : Person? {
-            get { }
-            set(value) {
-            }
-        }
-        
-        public init(firstName : String, lastName: String, age : Int) {
-            self.firstName = firstName
-            self.lastName = lastName
-            self.age = age
-        }
-        
-        open func toString() -> String {
         }
     }
     
-    ////////////////////////////////////
-    // Family
-    //
-    open class Family {
-        fileprivate var members : [Person] = []
-        
-        public init(spouse1: Person, spouse2: Person) {
+    fileprivate var _spouse : Person? = nil
+    open var spouse : Person? {
+        get {
+            return self._spouse
         }
-        
-        open func haveChild(_ child: Person) -> Bool {
+        set(value) {
+            if self.age > 18 {
+                self._spouse = value
+            }
         }
-        
-        open func householdIncome() -> Int {
+    }
+    
+    public init(firstName : String, lastName: String, age : Int) {
+        self.firstName = firstName
+        self.lastName = lastName
+        self.age = age
+    }
+    
+    open func toString() -> String {
+        return "[Person: firstName:\(self.firstName) lastName:\(self.lastName) age:\(self.age) job:\(self.job?.title ?? "nil") spouse:\(self.spouse?.firstName ?? "nil")]"
+    }
+}
+
+////////////////////////////////////
+// Family
+//
+open class Family {
+    fileprivate var members : [Person] = []
+    
+    public init(spouse1: Person, spouse2: Person) {
+        members.append(spouse1)
+        members.append(spouse2)
+        spouse1.spouse = spouse2
+        spouse2.spouse = spouse1
+    }
+    
+    open func haveChild(_ child: Person) -> Bool {
+        if members.count > 0 && (members[0].age > 21 || members[1].age > 21) {
+            members.append(child)
+            return true
         }
+        return false
+    }
+    
+    open func householdIncome() -> Int {
+        var householdIncome : Int = 0
+        for person in members {
+            if person.age >= 16 && person.job != nil {
+                let salary = person.job!.calculateIncome(2000)
+                householdIncome += salary
+            }
+        }
+        return householdIncome
+    }
 }
 
 
